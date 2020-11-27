@@ -3116,7 +3116,8 @@ static int msm_routing_lsm_port_put(struct snd_kcontrol *kcontrol,
 	set_lsm_port(lsm_port);
 	msm_routing_get_lsm_fe_idx(kcontrol, &fe_idx);
 	lsm_port_index[fe_idx] = ucontrol->value.integer.value[0];
-	if (lsm_port_idx < 1 || lsm_port_idx > 16)
+        /* Set the default AFE LSM Port to 0xffff */
+	if(lsm_port_idx <= 0 || lsm_port_idx >= ARRAY_SIZE(lsm_port_text))
 		lsm_port = 0xffff;
 	afe_set_lsm_afe_port_id(fe_idx, lsm_port);
 
