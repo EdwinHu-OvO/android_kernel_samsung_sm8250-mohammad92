@@ -1,4 +1,5 @@
 config SEC_Y2Q_PROJECT
+	depends on ARCH_KONA
 	default n
 	bool "Samsung Y2Q Project"
 	help
