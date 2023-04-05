@@ -1,4 +1,4 @@
-config=vendor/y2q_chn_openx_defconfig
+config=vendor/lineage_y2qdcmw_defconfig
 export PATH="/home/van/clang10/bin:/home/van/GCC_4.9/aarch64-linux-android-4.9/bin:/home/van/GCC_4.9/arm-linux-androideabi-4.9/bin:$PATH"
 export ARCH=arm64
 export CROSS_COMPILE=aarch64-linux-android-
