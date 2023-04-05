@@ -1300,31 +1300,9 @@ static void gc_worker(struct work_struct *work)
 	 * This worker is only here to reap expired entries when system went
 	 * idle after a busy period.
 	 */
-	ratio = scanned ? expired_count * 100 / scanned : 0;
-	if (ratio > GC_EVICT_RATIO) {
-		gc_work->next_gc_run = min_interval;
-#ifdef CONFIG_KNOX_NCM
-		// SEC_PRODUCT_FEATURE_KNOX_SUPPORT_NPA {
-		if ( (check_ncm_flag()) && (check_intermediate_flag()) ) {
-			gc_work->next_gc_run = 0;
-		}
-		// SEC_PRODUCT_FEATURE_KNOX_SUPPORT_NPA }
-#endif
-	} else {
-		unsigned int max = GC_MAX_SCAN_JIFFIES / GC_MAX_BUCKETS_DIV;
-
-		BUILD_BUG_ON((GC_MAX_SCAN_JIFFIES / GC_MAX_BUCKETS_DIV) == 0);
-
-		gc_work->next_gc_run += min_interval;
-		if (gc_work->next_gc_run > max)
-			gc_work->next_gc_run = max;
-#ifdef CONFIG_KNOX_NCM
-		// SEC_PRODUCT_FEATURE_KNOX_SUPPORT_NPA {
-		if ( (check_ncm_flag()) && (check_intermediate_flag()) ) {
-			gc_work->next_gc_run = 0;
-		}
-		// SEC_PRODUCT_FEATURE_KNOX_SUPPORT_NPA }
-#endif
+	if (next_run) {
+		gc_work->early_drop = false;
+		gc_work->next_bucket = 0;
 	}
 	queue_delayed_work(system_power_efficient_wq, &gc_work->dwork, next_run);
 }
