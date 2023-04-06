@@ -11480,33 +11480,6 @@ done:
 }
 EXPORT_SYMBOL(afe_unvote_lpass_core_hw);
 
-static bool q6afe_is_afe_lsm_port(int port_id)
-{
-	int i = 0;
-	for (i = 0; i< MAX_LSM_SESSIONS; i++)
-	{
-		pr_err("%s:: lsm_afe_port_array[%d]=0x%x - port_id 0x%x\n", __func__, i, this_afe.lsm_afe_port_array[i], port_id);
-		if (port_id == this_afe.lsm_afe_port_array[i])
-			return true;
-	}
-	return false;
-}
-
-/**
- * afe_set_lsm_afe_port_id
- * Update LSM AFE port
- *
-*/
-void afe_set_lsm_afe_port_id(int idx, int lsm_port)
-{
-	if (idx >= MAX_LSM_SESSIONS) {
-		pr_err("%s: %d Exceeding max LSM port supported\n", __func__, idx);
-		return;
-	}
-	pr_err("%s:: set lsm_port 0x%x at lsm port arr idx %d\n", __func__, lsm_port, idx);
-	this_afe.lsm_afe_port_array[idx] = lsm_port;
-}
-EXPORT_SYMBOL(afe_set_lsm_afe_port_id);
 /**
  * afe_set_cps_config -
  *         to set cps speaker protection configuration
