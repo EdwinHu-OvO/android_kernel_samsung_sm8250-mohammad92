@@ -161,7 +161,8 @@ static int print_mem_entry(void *data, void *ptr)
 	if (usermem_type == KGSL_MEM_ENTRY_ION)
 		kgsl_get_egl_counts(entry, &egl_surface_count,
 						&egl_image_count);
-
+						
+#if defined(CONFIG_DISPLAY_SAMSUNG) && !defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
 	seq_printf(s, "%pK %pK %16llu %5d %9s %10s %16s %5d %16d %6d %6d",
 			(uint64_t *)(uintptr_t) m->gpuaddr,
 			/*
