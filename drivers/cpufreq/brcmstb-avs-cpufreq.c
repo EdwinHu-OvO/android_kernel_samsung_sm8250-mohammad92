@@ -723,7 +723,8 @@ static int brcm_avs_cpufreq_remove(struct platform_device *pdev)
 	int ret;
 
 	ret = cpufreq_unregister_driver(&brcm_avs_driver);
-	WARN_ON(ret);
+	if (ret)
+		return ret;
 
 	brcm_avs_prepare_uninit(pdev);
 
