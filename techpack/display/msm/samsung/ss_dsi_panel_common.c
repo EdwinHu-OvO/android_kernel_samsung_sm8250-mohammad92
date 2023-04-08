@@ -2062,7 +2062,7 @@ int ss_panel_data_read_no_gpara(struct samsung_display_driver_data *vdd,
 	if (level_key & LEVEL0_KEY)
 		ss_send_cmd(vdd, TX_LEVEL0_KEY_DISABLE);
 
-	if (type != RX_FLASH_GAMMA && type != RX_POC_READ && type != RX_FW_UP_STATUS)
+	if (type != RX_FLASH_GAMMA && type != RX_POC_READ)
 		LCD_INFO("[%d]%s, addr: 0x%x, off: %d, len: %d, buf: %s\n",
 				type, ss_get_cmd_name(type),
 				set->cmds[0].msg.tx_buf[0], orig_offset, orig_rx_len,
@@ -2388,13 +2388,7 @@ int ss_panel_on_pre(struct samsung_display_driver_data *vdd)
 	if (vdd->other_line_panel_work_cnt)
 		vdd->other_line_panel_work_cnt = 0; /*stop open otherline dat file*/
 
-	/* Print debug data : fw up fail info */
-	if (vdd->fw_up.is_support)
-		ss_read_fw_up_debug_partition();
-
 	if (!ss_panel_attach_get(vdd)) {
-		ss_read_fw_up_debug_partition();
-
 		LCD_ERR("ss_panel_attach_get NG\n");
 		return false;
 	}
@@ -2497,11 +2491,6 @@ int ss_panel_on_pre(struct samsung_display_driver_data *vdd)
 		LCD_INFO("panel dbg: %x %x %x %x %x\n", rddpm, rddsm, errfg, dsierror, protocol_err);
 
 		vdd->read_panel_status_from_lk = 1;
-	}
-
-	if (vdd->skip_read_on_pre) {
-		LCD_INFO("Skip read operation in on_pre\n");
-		goto skip_read;
 	}
 
 	/* Module info */
@@ -2688,7 +2677,6 @@ int ss_panel_on_pre(struct samsung_display_driver_data *vdd)
 		}
 	}
 
-skip_read:
 	if (!IS_ERR_OR_NULL(vdd->panel_func.samsung_panel_on_pre))
 		vdd->panel_func.samsung_panel_on_pre(vdd);
 
@@ -2897,7 +2885,7 @@ int ss_panel_off_post(struct samsung_display_driver_data *vdd)
 		vdd->br_info.common_br.finger_mask_hbm_on = false;
 
 	LCD_INFO("[DISPLAY_%d] -\n", vdd->ndx);
-	SS_XLOG(vdd->cnt_mdp_clk_underflow);
+	SS_XLOG(SS_XLOG_FINISH);
 
 	return ret;
 }
@@ -3724,9 +3712,7 @@ static void ss_panel_parse_dt_bright_tables(struct device_node *np,
 				"samsung,candela_map_table_rev", panel_rev,
 				ss_parse_candella_mapping_table);
 
-#if (defined(CONFIG_MACH_X1Q_JPN_SINGLE) || \
-		(defined(CONFIG_MACH_Y2Q_JPN_SINGLE) && !defined(CONFIG_MACH_Y2Q_JPN_DCMOLY)) || \
-		defined(CONFIG_MACH_BLOOMXQ_JPN_SINGLE))
+#if defined(CONFIG_MACH_X1Q_JPN_SINGLE) || (defined(CONFIG_MACH_Y2Q_JPN_SINGLE) && !defined(CONFIG_MACH_Y2Q_JPN_DCMOLY))
 		LCD_INFO("parse jpn AOD brightness table\n");
 		parse_dt_data(np, &info->candela_map_table[AOD][panel_rev],
 				sizeof(struct candela_map_table),
@@ -4323,9 +4309,6 @@ static void ss_panel_parse_dt(struct samsung_display_driver_data *vdd)
 	vdd->dtsi_data.panel_lpm_enable = of_property_read_bool(np, "samsung,panel-lpm-enable");
 	LCD_ERR("alpm enable %s\n", vdd->dtsi_data.panel_lpm_enable ? "enabled" : "disabled");
 
-	vdd->skip_read_on_pre = of_property_read_bool(np, "samsung,skip_read_on_pre");
-	LCD_ERR("Skip read on pre %s\n", vdd->skip_read_on_pre ? "enabled" : "disabled");
-
 	/* Set HALL IC */
 	vdd->support_hall_ic  = of_property_read_bool(np, "samsung,mdss_dsi_hall_ic_enable");
 	LCD_ERR("hall_ic %s\n", vdd->support_hall_ic ? "enabled" : "disabled");
@@ -4545,64 +4528,18 @@ static void ss_panel_parse_dt(struct samsung_display_driver_data *vdd)
 		ss_panel_parse_spi_cmd(np, vdd);
 	}
 
-	/* SWIRE Rework, Firmware update */
+	/* SWIRE Rework */
 	vdd->fw_up.is_support = of_property_read_bool(np, "samsung,support_firmware_update");
 	LCD_INFO("[FW_UP]is_support = %d\n", vdd->fw_up.is_support);
 
 	if (vdd->fw_up.is_support) {
-		rc = of_property_read_u32(np, "samsung,fw_image_size", tmp);
-		vdd->fw_up.image_size = (!rc ? tmp[0] : 0);
-		rc = of_property_read_u32(np, "samsung,fw_sector_size", tmp);
-		vdd->fw_up.sector_size = (!rc ? tmp[0] : 0);
-		rc = of_property_read_u32(np, "samsung,fw_start_addr", tmp);
-		vdd->fw_up.start_addr = (!rc ? tmp[0] : 0);
-
-		LCD_INFO("[FW_UP]ADDRESS/SIZE (0x%x/%d)\n",
-			vdd->fw_up.start_addr, vdd->fw_up.image_size);
-
 		/* ERASE */
 		rc = of_property_read_u32(np, "samsung,firmware_update_erase_delay_us", tmp);
 		vdd->fw_up.erase_delay_us = (!rc ? tmp[0] : 0);
 
-		rc = of_property_read_u32_array(np, "samsung,fw_erase_addr_idx", vdd->fw_up.erase_addr_idx, 3);
-		if (rc) {
-			vdd->fw_up.erase_addr_idx[0] = -1;
-			LCD_INFO("fail to get fw_erase_addr_idx\n");
-		}
-
-		rc = of_property_read_u32_array(np, "samsung,fw_erase_size_idx", vdd->fw_up.erase_size_idx, 3);
-		if (rc) {
-			vdd->fw_up.erase_size_idx[0] = -1;
-			LCD_INFO("fail to get fw_erase_size_idx\n");
-		}
-		LCD_INFO("[FW_UP][ERASE] delay_us(%d) addr_idx(%d %d %d), size_idx(%d %d %d)\n",
-			vdd->fw_up.erase_delay_us,
-			vdd->fw_up.erase_addr_idx[0], vdd->fw_up.erase_addr_idx[1], vdd->fw_up.erase_addr_idx[2],
-			vdd->fw_up.erase_size_idx[0], vdd->fw_up.erase_size_idx[1], vdd->fw_up.erase_size_idx[2]);
-
-
 		/* WRITE */
 		rc = of_property_read_u32(np, "samsung,firmware_update_write_delay_us", tmp);
 		vdd->fw_up.write_delay_us = (!rc ? tmp[0] : 0);
-		rc = of_property_read_u32(np, "samsung,fw_write_data_size", tmp);
-		vdd->fw_up.write_data_size = (!rc ? tmp[0] : 0);
-
-		rc = of_property_read_u32_array(np, "samsung,fw_write_addr_idx", vdd->fw_up.write_addr_idx, 3);
-		if (rc) {
-			vdd->fw_up.write_addr_idx[0] = -1;
-			LCD_INFO("fail to get fw_write_addr_idx\n");
-		}
-
-		rc = of_property_read_u32_array(np, "samsung,fw_write_size_idx", vdd->fw_up.write_size_idx, 3);
-		if (rc) {
-			vdd->fw_up.write_size_idx[0] = -1;
-			LCD_INFO("fail to get fw_write_size_idx\n");
-		}
-		LCD_INFO("[FW_UP][WRITE] delay_us(%d) data_size(%d) addr_idx(%d %d %d), size_idx(%d %d %d)\n",
-			vdd->fw_up.write_delay_us,	vdd->fw_up.write_data_size,
-			vdd->fw_up.write_addr_idx[0], vdd->fw_up.write_addr_idx[1], vdd->fw_up.write_addr_idx[2],
-			vdd->fw_up.write_size_idx[0], vdd->fw_up.write_size_idx[1], vdd->fw_up.write_size_idx[2]);
-
 
 		/* READ */
 		rc = of_property_read_u32(np, "samsung,firmware_update_read_delay_us", tmp);
@@ -7618,14 +7555,10 @@ brr_done:
 		LCD_INFO("delay 1frame(min_rr: %d, %dus)\n", min_rr, interval_us);
 		usleep_range(interval_us, interval_us);
 
-		if (!vrr->running_vrr_mdp) {
-			ret = ss_set_normal_sde_core_clk(ddev);
-			if (ret) {
-				LCD_ERR("fail to set normal sde core clock..(%d)\n", ret);
-				SS_XLOG(ret, 0xbad2);
-			}
-		} else {
-			LCD_INFO("Do not set normal clk, vrr is ongoing!! (%d)\n", vrr->running_vrr_mdp);
+		ret = ss_set_normal_sde_core_clk(ddev);
+		if (ret) {
+			LCD_ERR("fail to set normal sde core clock..(%d)\n", ret);
+			SS_XLOG(ret, 0xbad2);
 		}
 	} else {
 		LCD_INFO("consecutive VRR req, keep max sde clk (cur: %d%s, adj: %d%s)\n",
@@ -7907,22 +7840,6 @@ int ss_early_display_init(struct samsung_display_driver_data *vdd)
 				LCD_ERR("no samsung_module_info_read function\n");
 			else
 				vdd->module_info_loaded_dsi = vdd->panel_func.samsung_module_info_read(vdd);
-		}
-
-		/* MDNIE X,Y */
-		if (!vdd->mdnie_loaded_dsi) {
-			if (IS_ERR_OR_NULL(vdd->panel_func.samsung_mdnie_read))
-				LCD_ERR("no samsung_mdnie_read function\n");
-			else
-				vdd->mdnie_loaded_dsi = vdd->panel_func.samsung_mdnie_read(vdd);
-		}
-
-		/* Panel Unique Cell ID */
-		if (!vdd->cell_id_loaded_dsi) {
-			if (IS_ERR_OR_NULL(vdd->panel_func.samsung_cell_id_read))
-				LCD_ERR("no samsung_cell_id_read function\n");
-			else
-				vdd->cell_id_loaded_dsi = vdd->panel_func.samsung_cell_id_read(vdd);
 		}
 
 		/* restore panel_state to poweroff

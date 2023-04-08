@@ -526,10 +526,6 @@ struct samsung_display_debug_data {
 	bool print_cmds;
 	bool *is_factory_mode;
 	bool panic_on_pptimeout;
-
-	/* misc */
-	struct miscdevice dev;
-	bool report_once;
 };
 
 struct self_display {
@@ -744,7 +740,6 @@ struct FW_UP {
 	u32 read_done_check;
 
 	bool need_sleep_in;
-	bool cmd_done;
 };
 
 enum fw_up_state {
@@ -1083,7 +1078,7 @@ struct panel_func {
 	int (*samsung_poc_ctrl)(struct samsung_display_driver_data *vdd, u32 cmd, const char *buf);
 
 	/* FirmWare Update */
-	int (*samsung_fw_up)(struct samsung_display_driver_data *vdd, int mode);
+	int (*samsung_fw_up)(struct samsung_display_driver_data *vdd);
 
 
 	/* Gram Checksum Test */
@@ -1693,9 +1688,6 @@ struct samsung_display_driver_data {
 	ktime_t sleep_out_time;
 	ktime_t tx_set_on_time;
 
-	/* Some panel read operation should be called after on-command. */
-	bool skip_read_on_pre;
-
 	/* Support Global Para */
 	int gpara;
 
@@ -1934,9 +1926,6 @@ struct samsung_display_driver_data {
 
 	/* flag to support reading module id at probe timing */
 	bool support_early_id_read;
-
-	/* mdp clock underflow */
-	int cnt_mdp_clk_underflow;
 };
 
 extern struct list_head vdds_list;
