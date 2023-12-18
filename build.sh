@@ -1,4 +1,4 @@
-export CLANG_PATH=/home/van/clang17
+export CLANG_PATH=$(pwd)/../clang18
 export PATH=${CLANG_PATH}/bin:${PATH}
 export CLANG_TRIPLE=aarch64-linux-gnu-
 export CROSS_COMPILE=aarch64-linux-gnu-
@@ -12,5 +12,6 @@ export LLVM_IAS=1
 export ARCH=arm64
 export SUBARCH=arm64
 
-make O=out vendor/lineage_y2qdcmw_defconfig
+make -j12 CC=clang O=out vendor/lineage_y2qdcmw_defconfig
 
+cp -r out/.config arch/arm64/configs/vendor/lineage_y2qdcmw_defconfig
